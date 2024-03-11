@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kelly+Slab&family=Roboto+Slab:wght@100..900&family=Unbounded:wght@200..900&display=swap"
+          rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Overpass+Mono:wght@300..700&family=Roboto+Slab:wght@100..900&family=Unbounded:wght@200..900&display=swap"
+          rel="stylesheet">
+    <style>
+		body {
+			font-family: Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+			background-color: #fff;
+		}
+
+		.container {
+			max-width: 800px;
+			margin: 20px auto;
+			border-radius: 5px;
+			padding: 20px;
+			padding-top: 240px;
+			overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            height: 400px;
+		}
+
+		.message-row {
+			display: flex;
+			align-items: center;
+			margin-bottom: 15px;
+		}
+
+		.message-text {
+		    font-size: 15px;
+			padding: 10px 15px;
+			border-radius: 0px;
+			max-width: 70%;
+			margin-left: 15px;
+			background-color: #ffe6cc;
+			color: #333;
+			word-wrap: break-word;
+		}
+
+		.message-meta {
+			font-size: 12px;
+			color: #666;
+			margin-top: 5px;
+		}
+
+		.user1-message {
+			align-self: flex-start;
+		}
+
+		.user2-message {
+			align-self: flex-end;
+			justify-content: flex-end;
+		}
+
+		.user1-message .message-text {
+		    background-color: #ffcccc;
+			margin-left: 0;
+			margin-right: 5px;
+			border-top-right-radius: 15px;
+			border-bottom-right-radius: 15px;
+			border-top-left-radius: 15px;
+		}
+
+		.user1-message .message-meta {
+			text-align: right;
+		}
+
+		.user2-message .message-text {
+
+			margin-left: 5px;
+			margin-right: 0;
+			border-top-right-radius: 15px;
+			border-top-left-radius: 15px;
+			border-bottom-left-radius: 15px;
+		}
+
+		.user2-message .message-meta {
+			text-align: left;
+		}
+
+        .content {
+          background-color: #ff6347;
+          position: fixed;
+          top: 0;
+          z-index: 1000;
+          width: 100%;
+          padding: 0px 5px 15px 15px;
+          border-bottom: 2px dashed #fc9d9d;
+          color: white;
+        }
+        h2 {
+          padding-top: 7px;
+          font-family: "Kelly Slab", sans-serif;
+        }
+        p {
+          font-family: "Overpass Mono", monospace;
+          color: #515250;
+        }
+        .content p {
+            color: white;
+        }
+
+        .message-container {
+        background-color: #333;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  height: 200px;
+  border-radius: 5px;
+  overflow: hidden;
+  position: fixed;
+  bottom: 0;
+  z-index: 1000;
+}
+
+.message-images {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 20%;
+  padding: 10px;
+}
+
+.message-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.message-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 80%;
+  padding: 10px;
+}
+
+textarea {
+  resize: none;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 10px;
+  flex-grow: 1;
+}
+
+.send-button {
+  background-color: #ff6347;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+html, body {
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+}
+::-webkit-scrollbar {
+  display: none;
+}
+
+
+    </style>
+</head>
+<body>
+<div class="content">
+    <h2>{{order.name}}</h2>
+
+    <p>{{order.cat}}</p>
+    {% if order.price <= 0 %}
+    <p>Цена: Укажите цену для заказа, внизу кнопка доллара :)</p>
+    {% else %}
+    <p>Цена: {{order.price}} <b>USDT</b></p>
+    {% endif %}
+
+    {% if order.tg_id_executor %}
+    <p>Исполнитель: Выбран </p>
+    {% else %}
+    <p>Исполнитель: Пока заказ не взяли </p>
+    {% endif %}
+</div>
+<div class="container">
+    {% for m in messages %}
+    {% if m.tg_id_client %}
+    <div class="message-row user1-message">
+        <div class="message-text">
+            {{m.message}}
+        </div>
+        <div class="message-meta">
+            Заказчик<br>
+            {% if here == order.tg_id_client %}
+            {{ m.data_time | time_delta(time_cl) | format_datetime }}
+            {% else %}
+            {{ m.data_time | time_delta(time_ex) | format_datetime }}
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="message-row user2-message">
+        <div class="message-meta">
+            Исполнитель<br>
+            {% if here == order.tg_id_client %}
+            {{ m.data_time | time_delta(time_cl) | format_datetime }}
+            {% else %}
+            {{ m.data_time | time_delta(time_ex) | format_datetime }}
+            {% endif %}
+        </div>
+        <div class="message-text">
+            {{m.message}}
+        </div>
+
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+<form method="post">
+<div class="message-container">
+    <div class="message-images">
+        <!--    <img src="/images/цена.png" alt="Image 1" class="message-image">-->
+        <a href="/{{order.id}}/{{here}}/price"><img src="цена.png" alt="Image 1" class="message-image"></a>
+<!--        <img src="/images/отказ.png" alt="Image 1" class="message-image">-->
+        {% if here != order.tg_id_client %}
+        <a href="/{{order.id}}/{{here}}/cancel_exec"><img src="отказ.png" alt="Image 1" class="message-image"></a>
+        {% endif %}
+    </div>
+        <div class="message-form">
+            <textarea name="message" required id="message" cols="30" rows="5"></textarea>
+            <button type="submit" class="send-button">Отправить</button>
+        </div>
+</div>
+    </form>
+</body>
+</html>
