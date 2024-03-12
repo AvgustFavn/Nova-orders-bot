@@ -78,39 +78,91 @@ async def callback_utc(c: types.CallbackQuery):
                            chat_id=c.from_user.id)
 
 @dp.callback_query(lambda c: c.data == 'catalog')
-async def callback_catalog(c: types.CallbackQuery, message: types.Message):
+async def callback_catalog(c: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.button(text=f'🖥 Программирование 🖥', callback_data=f'code')
     builder.button(text=f'🖼 Дизайн 🖼', callback_data=f'paint')
     builder.button(text=f'💲 Bitcoin 💲', callback_data=f'bitcoin')
     builder.adjust(1)
     await bot.send_message(text='Наши услуги:',
-                           chat_id=message.from_user.id, reply_markup=builder.as_markup())
+                           chat_id=c.from_user.id, reply_markup=builder.as_markup())
 
 
 @dp.callback_query(lambda c: c.data == 'code')
-async def callback_prog(c: types.CallbackQuery, message: types.Message):
+async def callback_prog(c: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.button(text=f'Бот любой сложности', callback_data=f'bots')
     builder.button(text=f'Сайт любой сложности', callback_data=f'sites')
     builder.button(text=f'Иное', callback_data=f'another_prog')
     builder.adjust(1)
     await bot.send_message(text='🖥 Наши услуги в сфере программирования 🖥 :',
-                           chat_id=message.from_user.id, reply_markup=builder.as_markup())
+                           chat_id=c.from_user.id, reply_markup=builder.as_markup())
+
+@dp.callback_query(lambda c: c.data == 'bots')
+async def callback_bots(c: types.CallbackQuery):
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f'Напишите ТЗ:', web_app=WebAppInfo(url=f'https://nova-api.online/{c.from_user.id}/prog/bots'))
+    await bot.send_message(text='Напишите ТЗ(техническое задание, описание вашей идеи):',
+                           chat_id=c.from_user.id, reply_markup=builder.as_markup())
+
+@dp.callback_query(lambda c: c.data == 'sites')
+async def callback_sites(c: types.CallbackQuery):
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f'Напишите ТЗ:', web_app=WebAppInfo(url=f'https://nova-api.online/{c.from_user.id}/prog/sites'))
+    await bot.send_message(text='Напишите ТЗ(техническое задание, описание вашей идеи):',
+                           chat_id=c.from_user.id, reply_markup=builder.as_markup())
+
+@dp.callback_query(lambda c: c.data == 'another_prog')
+async def callback_another_prog(c: types.CallbackQuery):
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f'Напишите ТЗ:', web_app=WebAppInfo(url=f'https://nova-api.online/{c.from_user.id}/prog/another'))
+    await bot.send_message(text='Напишите ТЗ(техническое задание, описание вашей идеи):',
+                           chat_id=c.from_user.id, reply_markup=builder.as_markup())
+
+@dp.callback_query(lambda c: c.data == 'orders_admin')
+async def callback_orders_admin(c: types.CallbackQuery):
+    orders = sess.query(Orders).all()
+    if orders:
+        for o in orders:
+            builder = InlineKeyboardBuilder()
+            text = f'⭐️⭐️⭐️ Заказ: {o.name} ⭐️⭐️⭐️\n' \
+                   f'Цена проекта: {o.price}USDT\n' \
+                   f'Категория заказа: {o.cat}\n' \
+                   f'➖➖➖➖➖➖➖➖➖➖\n' \
+                   f'ТЗ заказа: {o.descr}\n' \
+                   f'➖➖➖➖➖➖➖➖➖➖\n'
+
+            if o.tg_id_executor:
+                text += f'Исполнитель: @{o.username_executor}\n'
+            else:
+                text += f'Исполнитель: не назначен ❌\n'
+
+            text += f'Клиент: @{o.username_client}\n'
+            builder.button(text=f'Посмотреть диалог',
+                           web_app=WebAppInfo(url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{c.from_user.id}/messages'))
+            builder.button(text=f'Удалить заказ', callback_data=f'del_ord_{o.id}')
+            builder.adjust(1)
+            await bot.send_message(text=text, chat_id=c.from_user.id,
+                                   reply_markup=builder.as_markup())
+        await bot.send_message(text='Все доступные заказы были выведены, если нет - заказов доступных нету',
+                               chat_id=c.from_user.id)
+    else:
+        await bot.send_message(text='Видимо, у вас нету заказов', chat_id=c.from_user.id)
+
 
 @dp.callback_query(lambda c: c.data == 'paint')
-async def callback_paint(c: types.CallbackQuery, message: types.Message):
+async def callback_paint(c: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
-    builder.button(text=f'Напишите ТЗ:', web_app=WebAppInfo(url=f'/{message.from_user.id}/paints'))
+    builder.button(text=f'Напишите ТЗ:', web_app=WebAppInfo(url=f'https://nova-api.online/{c.from_user.id}/paints'))
     await bot.send_message(text='Напишите ТЗ(техническое задание, описание вашей идеи):',
-                           chat_id=message.from_user.id)
+                           chat_id=c.from_user.id, reply_markup=builder.as_markup())
 
 @dp.callback_query(lambda c: c.data == 'bitcoin')
-async def callback_bitcoin(c: types.CallbackQuery, message: types.Message):
+async def callback_bitcoin(c: types.CallbackQuery):
     await bot.send_message(text='Здравствуйте, на данный момент покупка Bitcoin производится в ручном режиме. '
                                 'Рассмотрим любую услугу по Bitcoin, пожалуйста напишите конкретную и ожидайте ответ '
                                 'оператора @novac0d',
-                           chat_id=message.from_user.id)
+                           chat_id=c.from_user.id)
 
 @dp.callback_query(lambda c: c.data == 'help')
 async def callback_help(c: types.CallbackQuery):
@@ -134,7 +186,7 @@ async def callback_my_orders(c: types.CallbackQuery):
             text += f'Исполнитель: @{o.username_executor}\n'
 
         builder = InlineKeyboardBuilder()
-        builder.button(text=f'💌 Сообщения по заказу 💌', web_app=WebAppInfo(url=f'/{o.id}/{o.tg_id_client}/{c.from_user.id}/messages'))
+        builder.button(text=f'💌 Сообщения по заказу 💌', web_app=WebAppInfo(url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{c.from_user.id}/messages'))
         builder.adjust(1)
         await bot.send_message(text=text, chat_id=c.from_user.id, reply_markup=builder.as_markup())
 
@@ -157,7 +209,7 @@ async def callback_prog_orders(c: types.CallbackQuery):
                f'Категория заказа: {o.cat}\n' \
                f'➖➖➖➖➖➖➖➖➖➖➖➖\n' \
                f'ТЗ заказа: {desc.message}\n' \
-               f'➖➖➖➖➖➖➖➖➖➖➖➖'
+               f'➖➖➖➖➖➖➖➖➖➖➖➖\n'
 
         text += f'Исполнитель: не назначен ❌\n'
 
@@ -165,7 +217,7 @@ async def callback_prog_orders(c: types.CallbackQuery):
             text += f'Клиент: @{o.username_client}\n'
 
         builder = InlineKeyboardBuilder()
-        builder.button(text=f'Взять заказ', web_app=WebAppInfo(url=f'/{o.id}/{o.tg_id_client}/{c.from_user.id}/take_it'))
+        builder.button(text=f'Взять заказ', web_app=WebAppInfo(url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{c.from_user.id}/take_it'))
         builder.adjust(1)
         await bot.send_message(text=text, chat_id=c.from_user.id, reply_markup=builder.as_markup())
     await bot.send_message(text='Все доступные заказы были выведены, если нет - заказов доступных нету', chat_id=c.from_user.id)
@@ -180,7 +232,7 @@ async def callback_prog_dis(c: types.CallbackQuery):
                f'Категория заказа: {o.cat}\n' \
                f'➖➖➖➖➖➖➖➖➖➖➖➖\n' \
                f'ТЗ заказа: {desc.message}\n' \
-               f'➖➖➖➖➖➖➖➖➖➖➖➖'
+               f'➖➖➖➖➖➖➖➖➖➖➖➖\n'
 
         text += f'Исполнитель: не назначен ❌\n'
 
@@ -188,7 +240,7 @@ async def callback_prog_dis(c: types.CallbackQuery):
             text += f'Клиент: @{o.username_client}\n'
 
         builder = InlineKeyboardBuilder()
-        builder.button(text=f'Взять заказ', web_app=WebAppInfo(url=f'/{o.id}/{o.tg_id_client}/{c.from_user.id}/take_it'))
+        builder.button(text=f'Взять заказ', web_app=WebAppInfo(url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{c.from_user.id}/take_it'))
         builder.adjust(1)
         await bot.send_message(text=text, chat_id=c.from_user.id, reply_markup=builder.as_markup())
     await bot.send_message(text='Все доступные заказы были выведены, если нет - заказов доступных нету',
@@ -202,7 +254,7 @@ async def callback_work(c: types.CallbackQuery):
         builder.adjust(1)
         for o in orders:
             builder.button(text=f'Заказ: {o.name}',
-                           web_app=WebAppInfo(url=f'/{o.id}/{o.tg_id_client}/{c.from_user.id}/messages'))
+                           web_app=WebAppInfo(url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{c.from_user.id}/messages'))
         await bot.send_message(text='Все ваши заказы: ', chat_id=c.from_user.id, reply_markup=builder.as_markup())
     else:
         await bot.send_message(text='Видимо, у вас нету заказов', chat_id=c.from_user.id)
@@ -226,13 +278,14 @@ async def callback_admin(c: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.adjust(1)
     builder.button(text=f'Все заказы', callback_data='orders_admin')
-    builder.button(text=f'Найти заказ', web_app=WebAppInfo(url=f'/search/{c.from_user.id}'))
-    builder.button(text=f'Назначить пользователя исполнителем', web_app=WebAppInfo(url=f'/do_exec/{c.from_user.id}'))
-    builder.button(text=f'Назначить пользователя админом', web_app=WebAppInfo(url=f'/do_admin/{c.from_user.id}'))
+    builder.button(text=f'Найти заказ', web_app=WebAppInfo(url=f'https://nova-api.online/search/{c.from_user.id}'))
+    builder.button(text=f'Назначить пользователя исполнителем', web_app=WebAppInfo(url=f'https://nova-api.online/do_exec/{c.from_user.id}'))
+    builder.button(text=f'Назначить пользователя админом', web_app=WebAppInfo(url=f'https://nova-api.online/do_admin/{c.from_user.id}'))
+    builder.adjust(1)
     await bot.send_message(text='Выберите действие:', chat_id=c.from_user.id, reply_markup=builder.as_markup())
 
 @dp.callback_query(lambda c: c.data.startswith("del_ord_"))
-async def callback_del_ord_(c: types.CallbackQuery, message: types.Message):
+async def callback_del_ord_(c: types.CallbackQuery):
     id_order = int(c.data.replace('del_ord_', ''))
     order = sess.query(Orders).filter(Orders.id == id_order).first()
     messages = sess.query(Dialogs).filter(Dialogs.id_order == order.id)
@@ -240,7 +293,7 @@ async def callback_del_ord_(c: types.CallbackQuery, message: types.Message):
     for m in messages:
          sess.delete(m)
     sess.commit()
-    await bot.send_message(text=f'Вы удалили заказ', chat_id=message.from_user.id)
+    await bot.send_message(text=f'Вы удалили заказ', chat_id=c.from_user.id)
 
 async def main() -> None:
     await dp.start_polling(bot)

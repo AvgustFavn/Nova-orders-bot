@@ -237,10 +237,10 @@ html, body {
 <div class="message-container">
     <div class="message-images">
         <!--    <img src="/images/цена.png" alt="Image 1" class="message-image">-->
-        <a href="/{{order.id}}/{{here}}/price"><img src="цена.png" alt="Image 1" class="message-image"></a>
+        <a href="/{{order.id}}/{{here}}/price"><img src="/images/цена.png" alt="Image 1" class="message-image"></a>
 <!--        <img src="/images/отказ.png" alt="Image 1" class="message-image">-->
         {% if here != order.tg_id_client %}
-        <a href="/{{order.id}}/{{here}}/cancel_exec"><img src="отказ.png" alt="Image 1" class="message-image"></a>
+        <a href="/{{order.id}}/{{here}}/cancel_exec"><img src="/images/отказ.png" alt="Image 1" class="message-image"></a>
         {% endif %}
     </div>
         <div class="message-form">

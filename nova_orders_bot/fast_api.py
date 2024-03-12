@@ -6,7 +6,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-
+from sqlalchemy import func
 from back import is_admin
 from db import *
 from filters import *
@@ -95,7 +95,7 @@ async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: in
         session.commit()
         order = session.query(Orders).filter(Orders.id == order_id).first()
         builder = InlineKeyboardBuilder()
-        builder.button(text=f'Зайти в диалог ➡️', url=f'/{order_id}/{tg_id_client}/{order.tg_id_executor}/messages')
+        builder.button(text=f'Зайти в диалог ➡️', web_app=WebAppInfo(url=f'https://nova-api.online/{order_id}/{tg_id_client}/{order.tg_id_executor}/messages'))
         builder.adjust(1)
         try:
             await bot.send_message(text='📩📬 Вам прислали сообщение 📩📬', chat_id=order.tg_id_executor, reply_markup=builder.as_markup())
@@ -107,7 +107,7 @@ async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: in
         session.add(mess)
         session.commit()
         builder = InlineKeyboardBuilder()
-        builder.button(text=f'Зайти в диалог ➡️', url=f'/{order_id}/{tg_id_client}/{tg_id_client}/messages')
+        builder.button(text=f'Зайти в диалог ➡️', web_app=WebAppInfo(url=f'https://nova-api.online/{order_id}/{tg_id_client}/{tg_id_client}/messages'))
         builder.adjust(1)
         try:
             await bot.send_message(text='📩📬 Вам прислали сообщение 📩📬', chat_id=tg_id_client,
@@ -126,7 +126,7 @@ async def take(request: Request, order_id: int, tg_id_client: int, exec_id: int)
         session.add(order)
         session.commit()
         builder = InlineKeyboardBuilder()
-        builder.button(text=f'Сообщения заказа', web_app=WebAppInfo(url=f'/{order_id}/{tg_id_client}/{exec_id}/messages'))
+        builder.button(text=f'Сообщения заказа', web_app=WebAppInfo(url=f'https://nova-api.online/{order_id}/{tg_id_client}/{exec_id}/messages'))
         await bot.send_message(text='✅ Вы взяли заказ! ✅', chat_id=exec_id, reply_markup=builder.as_markup())
         await bot.send_message(text='✅ Ваш заказ взят! ✅', chat_id=tg_id_client, reply_markup=builder.as_markup())
         return RedirectResponse(f'/{order_id}/{tg_id_client}/{exec_id}/messages', status_code=302)
@@ -145,7 +145,7 @@ async def change_price(request: Request, order_id: int, tg_id: int, digits: str 
     session.add(order)
     session.commit()
     builder = InlineKeyboardBuilder()
-    builder.button(text=f'Зайти в диалог ➡️', url=f'/{order_id}/{order.tg_id_client}/{tg_id}/messages')
+    builder.button(text=f'Зайти в диалог ➡️',  web_app=WebAppInfo(url=f'https://nova-api.online/{order_id}/{order.tg_id_client}/{tg_id}/messages'))
     try:
         await bot.send_message(text=f'💸 Цена заказа была изменена: {digits} usdt 💸', chat_id=order.tg_id_executor, reply_markup=builder.as_markup())
     except:
@@ -168,20 +168,21 @@ async def change_price(request: Request):
 
 @app.get("/search/{id_tg}")
 async def change_price(request: Request, id_tg: int):
-    return templates.TemplateResponse(request, "rightback.html")
+    return templates.TemplateResponse(request, "search.html")
 
 @app.post("/search/{id_tg}")
 async def change_price(request: Request, id_tg: int, keys: str = Form(default=None)):
     res = []
     keys = keys.split(' ')
     for k in keys:
-        ord_n = session.query(Orders).filter(Orders.name.lower().contains(k.lower())).first()
+        k = k.lower()
+        ord_n = session.query(Orders).filter(func.lower(Orders.name).ilike(f'%{k}%')).all()
         try:
-            ord_p = session.query(Orders).filter(Orders.name == int(k)).first()
+            ord_p = session.query(Orders).filter(Orders.name == int(k)).all()
         except:
             ord_p = []
 
-        ord_m = session.query(Orders).filter(Orders.descr.lower().contains(k.lower())).first()
+        ord_m = session.query(Orders).filter(func.lower(Orders.descr).ilike(f'%{k}%')).all()
         if ord_m:
             res.extend(ord_m)
         if ord_p:
@@ -191,7 +192,7 @@ async def change_price(request: Request, id_tg: int, keys: str = Form(default=No
 
     if res:
         for o in res:
-            text = f'⭐️⭐️⭐️ Заказ: {o.name} ⭐️⭐️⭐️\n' \
+            text = f'⭐⭐⭐ Заказ: {o.name} ⭐⭐⭐\n' \
                    f'Цена проекта: {o.price}USDT\n' \
                    f'Категория заказа: {o.cat}\n' \
                    f'➖➖➖➖➖➖➖➖➖➖➖➖\n' \
@@ -203,10 +204,14 @@ async def change_price(request: Request, id_tg: int, keys: str = Form(default=No
                 text += f'Исполнитель: @{o.username_executor}\n'
 
             builder = InlineKeyboardBuilder()
-            builder.button(text=f'Посмотреть сообщения',
-                           web_app=WebAppInfo(url=f'/{o.id}/{o.tg_id_client}/{o.tg_id_executor}/messages'))
-            builder = InlineKeyboardBuilder()
-            builder.button(text=f'Удалить заказ', callback_data=f'del_ord_{o.tg_id}')
+            if o.tg_id_executor:
+                builder.button(text=f'Посмотреть сообщения',
+                               web_app=WebAppInfo(url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{o.tg_id_executor}/messages'))
+            else:
+                builder.button(text=f'Посмотреть сообщения',
+                               web_app=WebAppInfo(
+                                   url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{o.tg_id_client}/messages'))
+            builder.button(text=f'Удалить заказ', callback_data=f'del_ord_{o.id}')
             builder.adjust(1)
             await bot.send_message(text=text, chat_id=id_tg, reply_markup=builder.as_markup())
         return RedirectResponse(f'/rightback', status_code=302)
