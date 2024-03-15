@@ -254,3 +254,20 @@ async def do_admin(request: Request, id_tg: int, username: str = Form(default=No
     else:
         await bot.send_message(text='Пользователь с таким юзернеймом отсутствует в боте', chat_id=id_tg)
     return RedirectResponse(f'/rightback', status_code=302)
+
+@app.get("/do_usual/{id_tg}")
+async def do_admin(request: Request, id_tg: int, username: str = Form(default=None)):
+    return templates.TemplateResponse(request, "do_exec.html")
+
+@app.post("/do_usual/{id_tg}")
+async def do_admin(request: Request, id_tg: int, username: str = Form(default=None)):
+    user = session.query(User).filter(User.username == username).first()
+    if user:
+        user.status = 0
+        session.add(user)
+        session.commit()
+        await bot.send_message(text=f'Пользователь @{username} теперь без полномочий', chat_id=id_tg)
+        return RedirectResponse(f'/rightback', status_code=302)
+    else:
+        await bot.send_message(text='Пользователь с таким юзернеймом отсутствует в боте', chat_id=id_tg)
+    return RedirectResponse(f'/rightback', status_code=302)

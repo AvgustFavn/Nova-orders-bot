@@ -284,6 +284,8 @@ async def callback_admin(c: types.CallbackQuery):
     builder.button(text=f'Найти заказ', web_app=WebAppInfo(url=f'https://nova-api.online/search/{c.from_user.id}'))
     builder.button(text=f'Назначить пользователя исполнителем', web_app=WebAppInfo(url=f'https://nova-api.online/do_exec/{c.from_user.id}'))
     builder.button(text=f'Назначить пользователя админом', web_app=WebAppInfo(url=f'https://nova-api.online/do_admin/{c.from_user.id}'))
+    builder.button(text=f'Понижение полномочий пользователя',
+                   web_app=WebAppInfo(url=f'https://nova-api.online/do_usual/{c.from_user.id}'))
     builder.adjust(1)
     await bot.send_message(text='Выберите действие:', chat_id=c.from_user.id, reply_markup=builder.as_markup())
 
