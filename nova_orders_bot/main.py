@@ -11,7 +11,7 @@ from back import is_in_sys, extract_first_number, is_orders_client, is_exec_n_up
 from db import User, Orders, Dialogs
 from db import session as sess
 
-API_TOKEN = '7084288081:AAF9XtpCBVxr-IhZQfMfNyWTLg00yQ0C7aI'
+API_TOKEN = '7077677944:AAGF3Ybl9sAK37Kk27sttVlhfwo5X1pxyyw'
 logging.basicConfig(level=logging.INFO)
 router = Router()
 bot = Bot(token=API_TOKEN)
@@ -24,14 +24,14 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 async def cmd_start(message: types.Message):
     if await is_in_sys(message.from_user.id):
         builder = InlineKeyboardBuilder()
-        builder.button(text=f'🛒 Каталог услуг 🛒', callback_data=f'catalog')
-        builder.button(text=f'🌇 Наши работы 💻', url='https://t.me/cnproject/2')
-        builder.button(text=f'📓 О нас 📔', url='https://t.me/cnproject/9')
-        builder.button(text=f'👤 Поддержка 24/7 👤 ', callback_data=f'help')
+        builder.button(text=f'Каталог услуг 🛒', callback_data=f'catalog')
+        builder.button(text=f'Наши работы 💼', url='https://t.me/cnproject/2')
+        builder.button(text=f'Инфо ℹ️', url='https://t.me/cnproject/9')
+        builder.button(text=f'Поддержка 24/7 👤', callback_data=f'help')
         if await is_orders_client(message.from_user.id):
-            builder.button(text=f'🚙 Мои проекты 🚙', callback_data=f'my_orders')
+            builder.button(text=f'Мои проекты ⚡️', callback_data=f'my_orders')
         if await is_exec_n_upper(message.from_user.id):
-            builder.button(text=f'🧾 Лист свободных работ 📄', callback_data=f'orders')
+            builder.button(text=f'Лист свободных работ 📄', callback_data=f'orders')
         if await is_admin(message.from_user.id):
             builder.button(text=f'Админ панель', callback_data=f'admin')
         if await is_work_had(message.from_user.id):
@@ -71,18 +71,21 @@ async def callback_utc(c: types.CallbackQuery):
 
     print(num)
 
-    user = User(tg_id=int(c.from_user.id), status=0, username=c.from_user.username, time_zone=num)
-    sess.add(user)
-    sess.commit()
+    try:
+        user = User(tg_id=int(c.from_user.id), status=0, username=c.from_user.username, time_zone=num)
+        sess.add(user)
+        sess.commit()
+    except:
+        pass
     await bot.send_message(text='Теперь нам будет удобнее с вами контактировать :) Перезапустите бота: /start',
                            chat_id=c.from_user.id)
 
 @dp.callback_query(lambda c: c.data == 'catalog')
 async def callback_catalog(c: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
-    builder.button(text=f'🖥 Программирование 🖥', callback_data=f'code')
-    builder.button(text=f'🖼 Дизайн 🖼', callback_data=f'paint')
-    builder.button(text=f'💲 Bitcoin 💲', callback_data=f'bitcoin')
+    builder.button(text=f'Программирование 💻', callback_data=f'code')
+    builder.button(text=f'Дизайн 🖼', callback_data=f'paint')
+    builder.button(text=f'Bitcoin 🪙', callback_data=f'bitcoin')
     builder.adjust(1)
     await bot.send_message(text='Наши услуги:',
                            chat_id=c.from_user.id, reply_markup=builder.as_markup())

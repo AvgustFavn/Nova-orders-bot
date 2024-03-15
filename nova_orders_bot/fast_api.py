@@ -232,7 +232,7 @@ async def do_exec(request: Request, id_tg: int, username: str = Form(default=Non
         user.status = 2
         session.add(user)
         session.commit()
-        bot.send_message(text=f'Пользователь @{username} теперь исполнитель', chat_id=id_tg)
+        await bot.send_message(text=f'Пользователь @{username} теперь исполнитель', chat_id=id_tg)
         return RedirectResponse(f'/rightback', status_code=302)
     else:
         await bot.send_message(text='Пользователь с таким юзернеймом отсутствует в боте', chat_id=id_tg)
@@ -249,7 +249,7 @@ async def do_admin(request: Request, id_tg: int, username: str = Form(default=No
         user.status = 1
         session.add(user)
         session.commit()
-        bot.send_message(text=f'Пользователь @{username} теперь администратор', chat_id=id_tg)
+        await bot.send_message(text=f'Пользователь @{username} теперь администратор', chat_id=id_tg)
         return RedirectResponse(f'/rightback', status_code=302)
     else:
         await bot.send_message(text='Пользователь с таким юзернеймом отсутствует в боте', chat_id=id_tg)
