@@ -72,7 +72,21 @@
 		}
 
 		.user1-message .message-meta {
-			text-align: right;
+			text-align: center;
+		}
+
+		.user3-message {
+			align-self: center;
+		}
+        .user3-message .message-text {
+		    background-color: #daffcc;
+			margin-left: 0;
+			margin-right: 5px;
+			border-radius: 15px;
+		}
+
+		.user3-message .message-meta {
+			text-align: center;
 		}
 
 		.user2-message .message-text {
@@ -201,7 +215,24 @@ html, body {
 </div>
 <div class="container">
     {% for m in messages %}
-    {% if m.tg_id_client %}
+    {% if m.tg_id_client and m.tg_id_executor %}
+<!--    Тут сообщение от менеджера-->
+    <div class="message-row user3-message">
+        <div class="message-text">
+            {{m.message}}
+        </div>
+        <div class="message-meta">
+            Менеджер<br>
+            {% if here == order.tg_id_client %}
+            {{ m.data_time | time_delta(time_cl) | format_datetime }}
+            {% elif admin %}
+            {{ m.data_time | time_delta(time_ad) | format_datetime }}
+            {% else %}
+            {{ m.data_time | time_delta(time_ex) | format_datetime }}
+            {% endif %}
+        </div>
+    </div>
+    {% elif m.tg_id_client %}
     <div class="message-row user1-message">
         <div class="message-text">
             {{m.message}}
@@ -210,6 +241,8 @@ html, body {
             Заказчик<br>
             {% if here == order.tg_id_client %}
             {{ m.data_time | time_delta(time_cl) | format_datetime }}
+            {% elif admin %}
+            {{ m.data_time | time_delta(time_ad) | format_datetime }}
             {% else %}
             {{ m.data_time | time_delta(time_ex) | format_datetime }}
             {% endif %}
@@ -221,6 +254,8 @@ html, body {
             Исполнитель<br>
             {% if here == order.tg_id_client %}
             {{ m.data_time | time_delta(time_cl) | format_datetime }}
+            {% elif admin %}
+            {{ m.data_time | time_delta(time_ad) | format_datetime }}
             {% else %}
             {{ m.data_time | time_delta(time_ex) | format_datetime }}
             {% endif %}

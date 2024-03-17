@@ -45,3 +45,11 @@ async def is_work_had(id_tg):
         return True
     else:
         return False
+
+async def is_admin_or_exec_this(id_tg, order_id):
+    user = session.query(User).filter(User.tg_id == int(id_tg)).first()
+    orders = session.query(Orders).filter(Orders.id == int(order_id)).first()
+    if user.status == 1 or orders.tg_id_executor == int(id_tg):
+        return True
+    else:
+        return False

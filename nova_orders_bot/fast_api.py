@@ -7,7 +7,7 @@ from starlette.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import func
-from back import is_admin
+from back import is_admin, is_admin_or_exec_this
 from db import *
 from filters import *
 from main import bot
@@ -76,16 +76,27 @@ async def prog_paints(request: Request, id: int):
 async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: int):
     messages = session.query(Dialogs).filter(Dialogs.id_order == order_id).order_by(Dialogs.data_time.desc()).all()
     order = session.query(Orders).filter(Orders.id == order_id).first()
-    client = session.query(User).filter(User.tg_id == int(tg_id_client)).first()
-    print(tg_id_client, client)
-    executor = session.query(User).filter(User.tg_id == order.tg_id_executor).first()
-    if executor:
-        return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order,
-                                                                  "time_cl": int(client.time_zone), "time_ex": int(executor.time_zone), "here": here_id})
-    else:
-        return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order,
-                                                                               "time_cl": int(client.time_zone),
-                                                                               "here": here_id, "time_ex": 0})
+    if await is_admin_or_exec_this(here_id, order_id):
+        client = session.query(User).filter(User.tg_id == int(tg_id_client)).first()
+        print(tg_id_client, client)
+        executor = session.query(User).filter(User.tg_id == order.tg_id_executor).first()
+        if await is_admin(here_id):
+            user = session.query(User).filter(User.tg_id == int(here_id)).first()
+            if executor:
+                return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order,
+                                                                          "time_ad": int(user.time_zone), "time_ex": int(executor.time_zone), "here": here_id, "admin": True})
+            else:
+                return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order,
+                                                                                       "time_ad": int(user.time_zone),
+                                                                                       "here": here_id, "time_ex": 0, "admin": True})
+        else:
+            if executor:
+                return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order, "time_ad": 0,
+                                                                          "time_cl": int(client.time_zone), "time_ex": int(executor.time_zone), "here": here_id, "admin": False})
+            else:
+                return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order,
+                                                                                       "time_cl": int(client.time_zone), "time_ad": 0,
+                                                                                       "here": here_id, "time_ex": 0, "admin": False})
 
 @app.post("/{order_id}/{tg_id_client}/{here_id}/messages")
 async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: int, message: str = Form(default=None)):
@@ -103,18 +114,45 @@ async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: in
             pass
         return RedirectResponse(f'/{order_id}/{tg_id_client}/{here_id}/messages', status_code=302)
     else:
-        mess = Dialogs(id_order=int(order_id), tg_id_executor=int(here_id), message=message, data_time=datetime.datetime.utcnow())
-        session.add(mess)
-        session.commit()
-        builder = InlineKeyboardBuilder()
-        builder.button(text=f'Зайти в диалог ➡️', web_app=WebAppInfo(url=f'https://nova-api.online/{order_id}/{tg_id_client}/{tg_id_client}/messages'))
-        builder.adjust(1)
-        try:
-            await bot.send_message(text='📩📬 Вам прислали сообщение 📩📬', chat_id=tg_id_client,
-                               reply_markup=builder.as_markup())
-        except:
-            pass
-        return RedirectResponse(f'/{order_id}/{tg_id_client}/{here_id}/messages', status_code=302)
+        if await is_admin(here_id):
+            mess = Dialogs(id_order=int(order_id), tg_id_executor=int(here_id), tg_id_client=int(tg_id_client), message=message, data_time=datetime.datetime.utcnow())
+            session.add(mess)
+            session.commit()
+            builder = InlineKeyboardBuilder()
+            builder.button(text=f'Зайти в диалог ➡️', web_app=WebAppInfo(url=f'https://nova-api.online/{order_id}/{tg_id_client}/{tg_id_client}/messages'))
+            builder.adjust(1)
+            try:
+                await bot.send_message(text='📩📬 Вам прислали сообщение от менеджера 📩📬', chat_id=tg_id_client,
+                                   reply_markup=builder.as_markup())
+            except:
+                pass
+
+            order = session.query(Orders).filter(Orders.id == int(order_id)).first()
+            builder = InlineKeyboardBuilder()
+            builder.button(text=f'Зайти в диалог ➡️', web_app=WebAppInfo(
+                url=f'https://nova-api.online/{order_id}/{tg_id_client}/{order.tg_id_executor}/messages'))
+            builder.adjust(1)
+            try:
+                await bot.send_message(text='📩📬 Вам прислали сообщение от менеджера 📩📬', chat_id=order.tg_id_executor,
+                                       reply_markup=builder.as_markup())
+            except:
+                pass
+            return RedirectResponse(f'/{order_id}/{tg_id_client}/{here_id}/messages', status_code=302)
+        else:
+            mess = Dialogs(id_order=int(order_id), tg_id_executor=int(here_id),
+                           message=message, data_time=datetime.datetime.utcnow())
+            session.add(mess)
+            session.commit()
+            builder = InlineKeyboardBuilder()
+            builder.button(text=f'Зайти в диалог ➡️', web_app=WebAppInfo(
+                url=f'https://nova-api.online/{order_id}/{tg_id_client}/{tg_id_client}/messages'))
+            builder.adjust(1)
+            try:
+                await bot.send_message(text='📩📬 Вам прислали сообщение 📩📬', chat_id=tg_id_client,
+                                       reply_markup=builder.as_markup())
+            except:
+                pass
+            return RedirectResponse(f'/{order_id}/{tg_id_client}/{here_id}/messages', status_code=302)
 
 @app.get("/{order_id}/{tg_id_client}/{exec_id}/take_it")
 async def take(request: Request, order_id: int, tg_id_client: int, exec_id: int):
@@ -135,23 +173,25 @@ async def take(request: Request, order_id: int, tg_id_client: int, exec_id: int)
 
 @app.get("/{order_id}/{tg_id}/price")
 async def change_price(request: Request, tg_id: int, order_id: int):
-    order = session.query(Orders).filter(Orders.id == order_id).first()
-    return templates.TemplateResponse(request, "new_price.html", context={"order": order, "tg_id": tg_id})
+    if await is_admin_or_exec_this(tg_id, order_id):
+        order = session.query(Orders).filter(Orders.id == order_id).first()
+        return templates.TemplateResponse(request, "new_price.html", context={"order": order, "tg_id": tg_id})
 
 @app.post("/{order_id}/{tg_id}/price")
 async def change_price(request: Request, order_id: int, tg_id: int, digits: str = Form(default=None)):
-    order = session.query(Orders).filter(Orders.id == order_id).first()
-    order.price = int(digits)
-    session.add(order)
-    session.commit()
-    builder = InlineKeyboardBuilder()
-    builder.button(text=f'Зайти в диалог ➡️',  web_app=WebAppInfo(url=f'https://nova-api.online/{order_id}/{order.tg_id_client}/{tg_id}/messages'))
-    try:
-        await bot.send_message(text=f'💸 Цена заказа была изменена: {digits} usdt 💸', chat_id=order.tg_id_executor, reply_markup=builder.as_markup())
-    except:
-        pass
-    await bot.send_message(text=f'💸 Цена заказа была изменена: {digits} usdt 💸', chat_id=order.tg_id_client, reply_markup=builder.as_markup())
-    return RedirectResponse(f'/{order_id}/{order.tg_id_client}/{tg_id}/messages', status_code=302)
+    if await is_admin_or_exec_this(tg_id, order_id):
+        order = session.query(Orders).filter(Orders.id == order_id).first()
+        order.price = int(digits)
+        session.add(order)
+        session.commit()
+        builder = InlineKeyboardBuilder()
+        builder.button(text=f'Зайти в диалог ➡️',  web_app=WebAppInfo(url=f'https://nova-api.online/{order_id}/{order.tg_id_client}/{tg_id}/messages'))
+        try:
+            await bot.send_message(text=f'💸 Цена заказа была изменена: {digits} usdt 💸', chat_id=order.tg_id_executor, reply_markup=builder.as_markup())
+        except:
+            pass
+        await bot.send_message(text=f'💸 Цена заказа была изменена: {digits} usdt 💸', chat_id=order.tg_id_client, reply_markup=builder.as_markup())
+        return RedirectResponse(f'/{order_id}/{order.tg_id_client}/{tg_id}/messages', status_code=302)
 
 @app.get("/{order_id}/{tg_id}/cancel_exec")
 async def cancel_exec(request: Request, order_id: int, tg_id: int, digits: str = Form(default=None)):
@@ -168,79 +208,84 @@ async def change_price(request: Request):
 
 @app.get("/search/{id_tg}")
 async def change_price(request: Request, id_tg: int):
-    return templates.TemplateResponse(request, "search.html")
+    if await is_admin(id_tg):
+        return templates.TemplateResponse(request, "search.html")
 
 @app.post("/search/{id_tg}")
 async def change_price(request: Request, id_tg: int, keys: str = Form(default=None)):
-    res = []
-    keys = keys.split(' ')
-    for k in keys:
-        k = k.lower()
-        ord_n = session.query(Orders).filter(func.lower(Orders.name).ilike(f'%{k}%')).all()
-        try:
-            ord_p = session.query(Orders).filter(Orders.name == int(k)).all()
-        except:
-            ord_p = []
+    if await is_admin(id_tg):
+        res = []
+        keys = keys.split(' ')
+        for k in keys:
+            k = k.lower()
+            ord_n = session.query(Orders).filter(func.lower(Orders.name).ilike(f'%{k}%')).all()
+            try:
+                ord_p = session.query(Orders).filter(Orders.name == int(k)).all()
+            except:
+                ord_p = []
 
-        ord_m = session.query(Orders).filter(func.lower(Orders.descr).ilike(f'%{k}%')).all()
-        if ord_m:
-            res.extend(ord_m)
-        if ord_p:
-            res.extend(ord_p)
-        if ord_n:
-            res.extend(ord_n)
+            ord_m = session.query(Orders).filter(func.lower(Orders.descr).ilike(f'%{k}%')).all()
+            if ord_m:
+                res.extend(ord_m)
+            if ord_p:
+                res.extend(ord_p)
+            if ord_n:
+                res.extend(ord_n)
 
-    if res:
-        for o in res:
-            text = f'⭐⭐⭐ Заказ: {o.name} ⭐⭐⭐\n' \
-                   f'Цена проекта: {o.price}USDT\n' \
-                   f'Категория заказа: {o.cat}\n' \
-                   f'➖➖➖➖➖➖➖➖➖➖➖➖\n' \
-                   f'ТЗ заказа: {o.descr}\n' \
-                   f'➖➖➖➖➖➖➖➖➖➖➖➖'
+        if res:
+            for o in res:
+                text = f'⭐⭐⭐ Заказ: {o.name} ⭐⭐⭐\n' \
+                       f'Цена проекта: {o.price}USDT\n' \
+                       f'Категория заказа: {o.cat}\n' \
+                       f'➖➖➖➖➖➖➖➖➖➖➖➖\n' \
+                       f'ТЗ заказа: {o.descr}\n' \
+                       f'➖➖➖➖➖➖➖➖➖➖➖➖'
 
-            text += f'Клиент: @{o.username_client}\n'
-            if o.tg_id_executor:
-                text += f'Исполнитель: @{o.username_executor}\n'
+                text += f'Клиент: @{o.username_client}\n'
+                if o.tg_id_executor:
+                    text += f'Исполнитель: @{o.username_executor}\n'
 
-            builder = InlineKeyboardBuilder()
-            if o.tg_id_executor:
-                builder.button(text=f'Посмотреть сообщения',
-                               web_app=WebAppInfo(url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{o.tg_id_executor}/messages'))
-            else:
-                builder.button(text=f'Посмотреть сообщения',
-                               web_app=WebAppInfo(
-                                   url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{o.tg_id_client}/messages'))
-            builder.button(text=f'Удалить заказ', callback_data=f'del_ord_{o.id}')
-            builder.adjust(1)
-            await bot.send_message(text=text, chat_id=id_tg, reply_markup=builder.as_markup())
-        return RedirectResponse(f'/rightback', status_code=302)
+                builder = InlineKeyboardBuilder()
+                if o.tg_id_executor:
+                    builder.button(text=f'Посмотреть сообщения',
+                                   web_app=WebAppInfo(url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{o.tg_id_executor}/messages'))
+                else:
+                    builder.button(text=f'Посмотреть сообщения',
+                                   web_app=WebAppInfo(
+                                       url=f'https://nova-api.online/{o.id}/{o.tg_id_client}/{o.tg_id_client}/messages'))
+                builder.button(text=f'Удалить заказ', callback_data=f'del_ord_{o.id}')
+                builder.adjust(1)
+                await bot.send_message(text=text, chat_id=id_tg, reply_markup=builder.as_markup())
+            return RedirectResponse(f'/rightback', status_code=302)
 
-    else:
-        await bot.send_message(text='Кажется, заказ не нашелся', chat_id=id_tg)
-        return RedirectResponse(f'/rightback', status_code=302)
+        else:
+            await bot.send_message(text='Кажется, заказ не нашелся', chat_id=id_tg)
+            return RedirectResponse(f'/rightback', status_code=302)
 
 
 @app.get("/do_exec/{id_tg}")
 async def do_exec(request: Request, id_tg: int, username: str = Form(default=None)):
-    return templates.TemplateResponse(request, "do_exec.html")
+    if await is_admin(id_tg):
+        return templates.TemplateResponse(request, "do_exec.html")
 
 @app.post("/do_exec/{id_tg}")
 async def do_exec(request: Request, id_tg: int, username: str = Form(default=None)):
-    user = session.query(User).filter(User.username == username).first()
-    if user:
-        user.status = 2
-        session.add(user)
-        session.commit()
-        await bot.send_message(text=f'Пользователь @{username} теперь исполнитель', chat_id=id_tg)
+    if await is_admin(id_tg):
+        user = session.query(User).filter(User.username == username).first()
+        if user:
+            user.status = 2
+            session.add(user)
+            session.commit()
+            await bot.send_message(text=f'Пользователь @{username} теперь исполнитель', chat_id=id_tg)
+            return RedirectResponse(f'/rightback', status_code=302)
+        else:
+            await bot.send_message(text='Пользователь с таким юзернеймом отсутствует в боте', chat_id=id_tg)
         return RedirectResponse(f'/rightback', status_code=302)
-    else:
-        await bot.send_message(text='Пользователь с таким юзернеймом отсутствует в боте', chat_id=id_tg)
-    return RedirectResponse(f'/rightback', status_code=302)
 
 @app.get("/do_admin/{id_tg}")
 async def do_admin(request: Request, id_tg: int, username: str = Form(default=None)):
-    return templates.TemplateResponse(request, "do_exec.html")
+    if await is_admin(id_tg):
+        return templates.TemplateResponse(request, "do_admin.html")
 
 @app.post("/do_admin/{id_tg}")
 async def do_admin(request: Request, id_tg: int, username: str = Form(default=None)):
@@ -257,7 +302,8 @@ async def do_admin(request: Request, id_tg: int, username: str = Form(default=No
 
 @app.get("/do_usual/{id_tg}")
 async def do_admin(request: Request, id_tg: int, username: str = Form(default=None)):
-    return templates.TemplateResponse(request, "do_exec.html")
+    if await is_admin(id_tg):
+        return templates.TemplateResponse(request, "do_usual.html")
 
 @app.post("/do_usual/{id_tg}")
 async def do_admin(request: Request, id_tg: int, username: str = Form(default=None)):
