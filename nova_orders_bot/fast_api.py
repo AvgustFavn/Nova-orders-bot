@@ -84,17 +84,17 @@ async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: in
             user = session.query(User).filter(User.tg_id == int(here_id)).first()
             if executor:
                 return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order,
-                                                                          "time_ad": int(user.time_zone), "time_ex": int(executor.time_zone), "here": here_id, "admin": True})
+                                                                          "time_ad": int(user.time_zone), "time_ex": int(executor.time_zone), "here": here_id, "admin": True, "time_cl": int(client.time_zone)})
             else:
                 return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order,
                                                                                        "time_ad": int(user.time_zone),
-                                                                                       "here": here_id, "time_ex": 0, "admin": True})
+                                                                                       "here": here_id, "time_ex": 0, "admin": True, "time_cl": int(client.time_zone)})
         else:
             if executor:
                 return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order, "time_ad": 0,
-                                                                          "time_cl": int(client.time_zone), "time_ex": int(executor.time_zone), "here": here_id, "admin": False})
+                                                                          "time_cl": int(client.time_zone), "time_ex": int(executor.time_zone), "here": here_id, "admin": False, "time_cl": int(client.time_zone)})
             else:
-                return templates.TemplateResponse(request, "dialog.html", context={"messages": messages, "order": order,
+                return templates.TemplateResponse(request, "dialog.html", context={"time_cl": int(client.time_zone), "messages": messages, "order": order,
                                                                                        "time_cl": int(client.time_zone), "time_ad": 0,
                                                                                        "here": here_id, "time_ex": 0, "admin": False})
 
