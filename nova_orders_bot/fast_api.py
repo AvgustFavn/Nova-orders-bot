@@ -36,6 +36,7 @@ async def prog_another(request: Request, id: int, cat: str, name: str = Form(def
     user = session.query(User).filter(User.tg_id == int(id)).first()
     order = Orders(tg_id_client=int(id), username_client=user.username, cat=cat, price=int(price), name=name, descr=description)
     session.add(order)
+    session.commit()
     mess = Dialogs(id_order=int(order.id), tg_id_client=id, message=description)
     session.add(mess)
     session.commit()
