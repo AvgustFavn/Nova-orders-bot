@@ -7,7 +7,8 @@ from aiogram.filters import Command
 from aiogram.types import WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from back import is_in_sys, extract_first_number, is_orders_client, is_exec_n_upper, is_admin, is_work_had
+from back import is_in_sys, extract_first_number, is_orders_client, is_exec_n_upper, is_admin, is_work_had, \
+    is_name_invalid
 from db import User, Orders, Dialogs
 from db import session as sess
 
@@ -23,6 +24,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 @router.message(Command(commands=["start"]))
 async def cmd_start(message: types.Message):
     if await is_in_sys(message.from_user.id):
+        await is_name_invalid(message.from_user.id, message.from_user.username)
         builder = InlineKeyboardBuilder()
         builder.button(text=f'Каталог услуг 🛒', callback_data=f'catalog')
         builder.button(text=f'Наши работы 💼', url='https://t.me/cnproject/2')
@@ -82,6 +84,7 @@ async def callback_utc(c: types.CallbackQuery):
 
 @dp.callback_query(lambda c: c.data == 'catalog')
 async def callback_catalog(c: types.CallbackQuery):
+    await is_name_invalid(c.from_user.id, c.from_user.username)
     builder = InlineKeyboardBuilder()
     builder.button(text=f'Программирование 💻', callback_data=f'code')
     builder.button(text=f'Дизайн 🖼', callback_data=f'paint')
@@ -175,6 +178,7 @@ async def callback_help(c: types.CallbackQuery):
 
 @dp.callback_query(lambda c: c.data == 'my_orders')
 async def callback_my_orders(c: types.CallbackQuery):
+    await is_name_invalid(c.from_user.id, c.from_user.username)
     orders = sess.query(Orders).filter(Orders.tg_id_client == c.from_user.id).all()
     for o in orders:
         text = f'⭐️⭐️⭐️ Заказ: {o.name} ⭐️⭐️⭐️\n' \

@@ -36,7 +36,6 @@ async def prog_another(request: Request, id: int, cat: str, name: str = Form(def
     user = session.query(User).filter(User.tg_id == int(id)).first()
     order = Orders(tg_id_client=int(id), username_client=user.username, cat=cat, price=int(price), name=name, descr=description)
     session.add(order)
-    session.commit()
     mess = Dialogs(id_order=int(order.id), tg_id_client=id, message=description)
     session.add(mess)
     session.commit()
@@ -76,10 +75,10 @@ async def prog_paints(request: Request, id: int):
 async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: int):
     messages = session.query(Dialogs).filter(Dialogs.id_order == order_id).order_by(Dialogs.data_time.desc()).all()
     order = session.query(Orders).filter(Orders.id == order_id).first()
+    executor = session.query(User).filter(User.tg_id == order.tg_id_executor).first()
+    client = session.query(User).filter(User.tg_id == int(tg_id_client)).first()
     if await is_admin_or_exec_this(here_id, order_id):
-        client = session.query(User).filter(User.tg_id == int(tg_id_client)).first()
         print(tg_id_client, client)
-        executor = session.query(User).filter(User.tg_id == order.tg_id_executor).first()
         if await is_admin(here_id):
             user = session.query(User).filter(User.tg_id == int(here_id)).first()
             if executor:
@@ -95,8 +94,18 @@ async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: in
                                                                           "time_cl": int(client.time_zone), "time_ex": int(executor.time_zone), "here": here_id, "admin": False, "time_cl": int(client.time_zone)})
             else:
                 return templates.TemplateResponse(request, "dialog.html", context={"time_cl": int(client.time_zone), "messages": messages, "order": order,
-                                                                                       "time_cl": int(client.time_zone), "time_ad": 0,
+                                                                                   "time_ad": 0,
                                                                                        "here": here_id, "time_ex": 0, "admin": False})
+    if executor:
+        return templates.TemplateResponse(request, "dialog.html",
+                                          context={"messages": messages, "order": order, "time_ad": 0,
+                                                   "time_ex": int(executor.time_zone),
+                                                   "here": here_id, "admin": False, "time_cl": int(client.time_zone)})
+    else:
+        return templates.TemplateResponse(request, "dialog.html",
+                                          context={"time_cl": int(client.time_zone), "messages": messages,
+                                                   "order": order, "time_ad": 0,
+                                                   "here": here_id, "time_ex": 0, "admin": False})
 
 @app.post("/{order_id}/{tg_id_client}/{here_id}/messages")
 async def dialog(request: Request, order_id: int, tg_id_client: int, here_id: int, message: str = Form(default=None)):

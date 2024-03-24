@@ -53,3 +53,10 @@ async def is_admin_or_exec_this(id_tg, order_id):
         return True
     else:
         return False
+
+async def is_name_invalid(id_tg, username):
+    user = session.query(User).filter(User.tg_id == int(id_tg)).first()
+    if user.username != username:
+        user.username = username
+        session.add(user)
+        session.commit()
